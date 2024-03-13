@@ -1,6 +1,7 @@
 #ifndef MEOW_STACK_H
 #define MEOW_STACK_H
 #include <utility>
+#include <stdexcept>
 
 namespace MS {
 

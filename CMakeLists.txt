@@ -7,7 +7,7 @@ project (Meow)
 include(cmake/Core.cmake)
 
 add_subdirectory("MeowStack")
-#add_subdirectory("MeowCPU")
+add_subdirectory("MeowCPU")
 
 
 
