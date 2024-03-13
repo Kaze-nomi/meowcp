@@ -9,3 +9,7 @@ cmake --build build
 Запуск тестов:
 
 ctest --test-dir ./build
+
+Рассчёт первых 40 чисел Фибоначчи:
+
+./build/MeowCPU/MeowCPU ./assembly/fibonachi.meow 
