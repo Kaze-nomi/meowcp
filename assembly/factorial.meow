@@ -1,0 +1,22 @@
+factorial:
+POPR AX
+PUSHR AX
+PUSHR AX
+PUSH 0
+JEQ ZERO
+PUSH 1
+PUSHR AX
+SUB
+CALL factorial
+MUL
+RET
+ZERO:
+POP
+PUSH 1
+RET
+
+BEGIN
+IN
+CALL factorial
+OUT
+END

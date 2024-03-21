@@ -10,6 +10,6 @@ cmake --build build
 
 ctest --test-dir ./build
 
-Рассчёт первых 40 чисел Фибоначчи:
+Рекурсивный рассчёт факториала числа:
 
-./build/MeowCPU/MeowCPU ./assembly/fibonachi.meow 
+./build/MeowCPU/MeowCPU ./assembly/factorial.meow

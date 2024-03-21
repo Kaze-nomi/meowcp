@@ -20,7 +20,8 @@ endfunction()
 
 function(as_executable)
     file(GLOB SOURCE_EXE src/*.cpp)
-    add_executable(${PROJECT_NAME} ${SOURCE_EXE})
+    file(GLOB HEADERS_EXE include/*.hpp)
+    add_executable(${PROJECT_NAME} ${SOURCE_EXE} ${HEADERS_EXE})
 endfunction()
 
 function(with_test)
