@@ -6,11 +6,25 @@
 #include <vector>
 #include <map>
 
+enum ReturnType {
+  END_PROGRAM = -3,
+  ERROR = -2, 
+  OK = -1, 
+  GOTO = 0
+};
+
+struct ReturnValue {
+  ReturnType type;
+  int idx; // used only for GOTO type
+  ReturnValue(ReturnType tp) : type(tp), idx(0) {}
+  ReturnValue(ReturnType tp, int idx) : type(tp), idx(idx) {}
+};
+
 
 class Command {
 public:
   // return -3 - end program, -2 - error, -1 - OK(go to next command), >=0 - index of next command
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx) const = 0;
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx) const = 0;
 
   virtual ~Command() = default;
 };
@@ -18,15 +32,15 @@ public:
 
 class BeginCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
-    return -1;
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+    return ReturnValue(ReturnType::OK);
   }
 };
 
 class EndCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
-    return -3;
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+    return ReturnValue(ReturnType::END_PROGRAM);
   }
 };
 
@@ -35,21 +49,21 @@ private:
   int val;
 public:	
   PushCommand(int value) : val(value) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     stack.push(val);
-    return -1;
+    return ReturnValue(ReturnType::OK);
   }
 };
 
 class PopCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     try {
       stack.pop();
-      return -1;
-    } catch (const std::exception &e) {
+      return ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -59,13 +73,13 @@ private:
   std::string val;
 public:
   PushrCommand(const std::string &value) : val(value) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     if (regs.find(val) != regs.end()) {
       stack.push(regs[val]);
-      return -1;
+      return ReturnValue(ReturnType::OK);
     } else {
       std::cout << "Error! REGISTER \"" << val << "\" is not initialized!" << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -76,14 +90,14 @@ private:
   std::string val;
 public:
   PoprCommand(const std::string &value) : val(value) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     try {
       regs[val] = stack.top();
       stack.pop();
-      return -1;
-    } catch (const std::exception &e) {
+      return ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -93,7 +107,7 @@ private:
   std::string op;
 public:
   CalcCommand(const std::string &operation) : op(operation) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     try {
       int A = stack.top();
       stack.pop();
@@ -108,13 +122,13 @@ public:
       } else if (op == "DIV") {
         stack.push(A / B);
       } else {
-        return -2;
+        return ReturnValue(ReturnType::ERROR);
       }
 
-      return -1;
-    } catch (const std::exception &e) {
+      return ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -122,14 +136,14 @@ public:
 
 class OutCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     try {
       std::cout << stack.top() << std::endl;
       stack.pop();
-      return -1;
-    } catch (const std::exception &e) {
+      return ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -137,15 +151,15 @@ public:
 
 class InCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     try {
       int val;
       std::cin >> val;
       stack.push(val);
-      return -1;
-    } catch (const std::exception &e) {
+      return ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -155,12 +169,12 @@ private:
   std::string label;
 public:
   JMPCommand(const std::string &lbl) : label(lbl) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     const auto &tmp = labels.find(label);
     if (tmp == labels.end()) {
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
-    return tmp->second;
+    return ReturnValue(ReturnType::GOTO, tmp->second);
   }
 };
 
@@ -170,10 +184,10 @@ private:
   std::string label;
 public:
   JMPIfCommand(const std::string &op, const std::string &lbl) : operation(op), label(lbl) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     const auto &tmp = labels.find(label);
     if (tmp == labels.end()) {
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
 
     try {
@@ -195,13 +209,13 @@ public:
       } else if (operation == "JBE") {
         condition = A <= B;
       } else {
-        return -2;
+        return ReturnValue(ReturnType::ERROR);
       }
 
-      return condition ? tmp->second : -1;
-    } catch (const std::exception &e) {
+      return condition ? ReturnValue(ReturnType::GOTO, tmp->second) : ReturnValue(ReturnType::OK);
+    } catch (const std::logic_error &e) {
       std::cout << e.what() << std::endl;
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
   }
 };
@@ -209,10 +223,10 @@ public:
 
 class RetCommand : public Command {
 public:
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     int res = callStack.top();
     callStack.pop();
-    return res;
+    return ReturnValue(ReturnType::GOTO, res);
   }
 };
 
@@ -222,13 +236,13 @@ private:
   std::string label;
 public:
   CallCommand(const std::string &lbl) : label(lbl) { }
-  virtual int run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
+  virtual ReturnValue run(MS::MeowStack<int> &stack, MS::MeowStack<int> &callStack, std::map<std::string, int> &regs, const std::map<std::string, int> &labels, int commandIdx = 0) const override {
     const auto &tmp = labels.find(label);
     if (tmp == labels.end()) {
-      return -2;
+      return ReturnValue(ReturnType::ERROR);
     }
     callStack.push(commandIdx + 1);
-    return tmp->second;
+    return ReturnValue(ReturnType::GOTO, tmp->second);
   }
 };
 
@@ -318,8 +332,9 @@ public:
 
       curr = parser.getToken();
     }
-
+    
     if (!res.endFlag) {
+      std::cout << "Error! Preprocessor:: no END in file" << std::endl;
       return -1;
     }
 

@@ -21,18 +21,20 @@ public:
     }
     int idx = prog.startIdx;
     while (true) {
-      int res = prog.commands[idx]->run(stack, callStack, regs, prog.labels, idx);
-      if (res == -3) {
+      ReturnValue res = prog.commands[idx]->run(stack, callStack, regs, prog.labels, idx);
+      switch (res.type) {
+      case ReturnType::END_PROGRAM:
         return 0;
-      }
-      if (res == -2) {
+        break;
+      case ReturnType::ERROR:
         return -1;
-      }
-      if (res == -1) {
+        break;
+      case ReturnType::OK:
         idx++;
-      }
-      if (res >= 0) {
-        idx = res;
+        break;
+      case ReturnType::GOTO:
+        idx = res.idx;
+        break;
       }
     }
   }
